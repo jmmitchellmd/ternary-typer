@@ -1,0 +1,615 @@
+<div id="kt-root" data-size="medium">
+<style>
+  #kt-root {
+    --panel-bg: #14181a;
+    --panel-edge: #23292c;
+    --amber: #ffb238;
+    --amber-dim: #6b4f1e;
+    --green: #6ee7a8;
+    --green-dim: #23402f;
+    --col-index: #7dd3fc;
+    --col-index-dim: #1f3a45;
+    --col-middle: #6ee7a8;
+    --col-middle-dim: #23402f;
+    --col-ring: #ffb238;
+    --col-ring-dim: #6b4f1e;
+    --ink: #d9d6ce;
+    --ink-dim: #6b6f6a;
+    --btn-scale: 1;
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, Menlo, monospace;
+    background: var(--panel-bg);
+    color: var(--ink);
+    border-radius: 14px;
+    padding: 28px calc(24px * var(--btn-scale)) 22px;
+    max-width: calc(760px * var(--btn-scale));
+    margin: 0 auto;
+    transition: max-width 0.15s ease, padding 0.15s ease;
+    box-shadow: inset 0 0 0 1px var(--panel-edge), 0 20px 50px -25px rgba(0,0,0,0.6);
+  }
+  #kt-root * { box-sizing: border-box; }
+
+  .kt-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 18px;
+    border-bottom: 1px solid var(--panel-edge);
+    padding-bottom: 12px;
+  }
+  .kt-title { font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+  .kt-header-right { display: flex; align-items: baseline; gap: 10px; }
+  .kt-caps {
+    font-size: 11px; letter-spacing: 0.1em; color: #0b0d0e;
+    background: var(--ink); padding: 2px 8px; border-radius: 4px;
+    font-weight: 700; min-height: 1em;
+  }
+  .kt-caps:empty { display: none; }
+  .kt-mode { font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .kt-mode.letter { color: var(--green); }
+  .kt-mode.command { color: var(--amber); }
+  .kt-mode.number { color: var(--col-index); }
+
+  .kt-output-row { margin-bottom: 20px; }
+  .kt-output {
+    background: #0b0d0e;
+    border: 1px solid var(--panel-edge);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 16px;
+    min-height: 70px;
+    line-height: 1.5;
+    letter-spacing: 0.02em;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .kt-cursor { display: inline-block; width: 8px; background: var(--green); animation: kt-blink 1s steps(1) infinite; }
+  @keyframes kt-blink { 50% { opacity: 0; } }
+
+  .kt-progress { display: flex; gap: 6px; margin-bottom: 20px; }
+  .kt-slot { flex: 1; height: 5px; border-radius: 3px; background: var(--panel-edge); transition: background 0.15s ease; }
+  .kt-slot.filled { background: var(--green); }
+  .kt-slot.filled.command { background: var(--amber); }
+  .kt-slot.filled.number { background: var(--col-index); }
+
+  .kt-misspelled { text-decoration: underline wavy #ff6b6b; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+
+  .kt-suggestions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    min-height: 34px;
+    margin-bottom: 14px;
+    font-size: 12px;
+  }
+  .kt-suggestions .kt-sug-label { color: var(--ink-dim); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .kt-sug-chip {
+    background: #1b2022; border: 1px solid var(--panel-edge); color: var(--ink-dim);
+    padding: 4px 10px; border-radius: 5px;
+  }
+  .kt-sug-chip.kt-sug-top { background: var(--green-dim); color: var(--green); font-weight: 600; border-color: var(--green-dim); }
+
+  .kt-candidates {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 26px;
+    min-height: 360px; /* sized for the largest case: 9 candidates in one column (first tap) */
+    align-content: center;
+  }
+  .kt-group { display: flex; flex-direction: column; gap: 6px; }
+  .kt-group-header {
+    font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+    text-align: center; padding-bottom: 6px; margin-bottom: 2px;
+    border-bottom: 1px solid var(--panel-edge);
+  }
+  .kt-group.index .kt-group-header { color: var(--col-index); }
+  .kt-group.middle .kt-group-header { color: var(--col-middle); }
+  .kt-group.ring .kt-group-header { color: var(--col-ring); }
+  .kt-cand { text-align: center; padding: 7px 0; border-radius: 6px; font-size: 14px; background: #1b2022; color: var(--ink-dim); }
+  .kt-group.index .kt-cand.alive { background: var(--col-index-dim); color: var(--col-index); font-weight: 600; }
+  .kt-group.middle .kt-cand.alive { background: var(--col-middle-dim); color: var(--col-middle); font-weight: 600; }
+  .kt-group.ring .kt-cand.alive { background: var(--col-ring-dim); color: var(--col-ring); font-weight: 600; }
+  .kt-resolved-banner {
+    grid-column: 1 / -1; text-align: center; font-size: 22px; font-weight: 700;
+    padding: 14px 0; border-radius: 8px; background: var(--ink); color: #0b0d0e;
+  }
+
+  #kt-root[data-size="small"] { --btn-scale: 0.82; }
+  #kt-root[data-size="medium"] { --btn-scale: 1; }
+  #kt-root[data-size="large"] { --btn-scale: 1.22; }
+
+  .kt-size-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+  .kt-size-label { font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-dim); }
+  .kt-size-control { display: flex; gap: 4px; }
+  .kt-size-control button {
+    background: #1b2022; border: 1px solid var(--panel-edge); color: var(--ink-dim);
+    font-family: inherit; font-size: 11px; padding: 4px 11px; border-radius: 5px; cursor: pointer;
+  }
+  .kt-size-control button.kt-size-active { background: var(--ink); color: #0b0d0e; border-color: var(--ink); font-weight: 700; }
+
+  .kt-toggles { display: flex; gap: 8px; }
+  .kt-toggle {
+    display: flex; align-items: center; gap: 6px;
+    background: #1b2022; border: 1px solid var(--panel-edge); color: var(--ink-dim);
+    font-family: inherit; font-size: 11px; letter-spacing: 0.02em;
+    padding: 4px 10px; border-radius: 5px; cursor: pointer;
+  }
+  .kt-toggle .kt-toggle-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-dim); }
+  .kt-toggle.kt-toggle-on { color: var(--ink); }
+  .kt-toggle.kt-toggle-on .kt-toggle-dot { background: var(--green); }
+
+  .kt-buttons {
+    display: flex;
+    align-items: flex-start;
+    gap: calc(12px * var(--btn-scale));
+    padding: calc(6px * var(--btn-scale)) calc(4px * var(--btn-scale)) calc(34px * var(--btn-scale));
+    margin-bottom: 14px;
+  }
+  .kt-btn {
+    flex: 1;
+    background: linear-gradient(180deg, #2a3134, #1c2224);
+    border: 1px solid var(--panel-edge);
+    border-bottom: 3px solid #0b0d0e;
+    border-radius: calc(10px * var(--btn-scale));
+    color: var(--ink);
+    font-family: inherit;
+    padding: calc(16px * var(--btn-scale)) 0 calc(12px * var(--btn-scale));
+    font-size: calc(13px * var(--btn-scale));
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    transform: translateY(calc(var(--arc-y) * var(--btn-scale)));
+    transition: transform 0.08s ease;
+  }
+  /* Arc: middle finger (longest) sits highest; index/ring flank it slightly
+     lower; thumb and pinky drop further and angle inward, echoing how a
+     relaxed hand actually rests over 5 keys rather than a flat row. */
+  .kt-btn.thumb  { --arc-y: 30px; }
+  .kt-btn.index  { --arc-y: 10px; }
+  .kt-btn.middle { --arc-y: 0px; }
+  .kt-btn.ring   { --arc-y: 10px; }
+  .kt-btn.pinky  { --arc-y: 26px; }
+  .kt-btn .kt-key { display: block; font-size: calc(10px * var(--btn-scale)); opacity: 0.5; margin-top: calc(3px * var(--btn-scale)); letter-spacing: 0.1em; }
+  .kt-btn:active, .kt-btn.kt-pressed {
+    border-bottom: 1px solid #0b0d0e;
+    transform: translateY(calc(var(--arc-y) * var(--btn-scale) + 2px));
+  }
+  .kt-btn.index:active, .kt-btn.index.kt-pressed { background: var(--col-index-dim); color: var(--col-index); }
+  .kt-btn.middle:active, .kt-btn.middle.kt-pressed { background: var(--col-middle-dim); color: var(--col-middle); }
+  .kt-btn.ring:active, .kt-btn.ring.kt-pressed { background: var(--col-ring-dim); color: var(--col-ring); }
+  .kt-btn.thumb { flex: 0 0 20%; }
+  .kt-btn.thumb:active, .kt-btn.thumb.kt-pressed { background: var(--amber-dim); color: var(--amber); }
+  .kt-btn.pinky { flex: 0 0 20%; }
+  .kt-btn.pinky:active, .kt-btn.pinky.kt-pressed { background: #3a2230; color: #ff6b9d; }
+
+  .kt-footer { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .kt-hint { font-size: 11px; color: var(--ink-dim); letter-spacing: 0.02em; line-height: 1.5; }
+  .kt-reset {
+    background: none; border: 1px solid var(--panel-edge); color: var(--ink-dim);
+    font-family: inherit; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 6px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap;
+  }
+  .kt-reset:hover { color: var(--ink); border-color: var(--ink-dim); }
+</style>
+
+<div class="kt-header">
+  <div class="kt-title">Ternary Typer — keyboard or touch</div>
+  <div class="kt-header-right">
+    <div class="kt-caps" id="kt-caps"></div>
+    <div class="kt-mode letter" id="kt-mode-label">LETTER</div>
+  </div>
+</div>
+
+<div class="kt-output-row">
+  <div class="kt-output" id="kt-output" tabindex="0"><span class="kt-cursor">&nbsp;</span></div>
+</div>
+
+<div class="kt-suggestions" id="kt-suggestions"></div>
+<div class="kt-progress" id="kt-progress"></div>
+<div class="kt-candidates" id="kt-candidates"></div>
+
+<div class="kt-size-row">
+  <div class="kt-toggles">
+    <button class="kt-toggle kt-toggle-on" id="kt-autocap-toggle"><span class="kt-toggle-dot"></span>Auto-cap</button>
+    <button class="kt-toggle kt-toggle-on" id="kt-autopunct-toggle"><span class="kt-toggle-dot"></span>Auto-space</button>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span class="kt-size-label">hand size</span>
+    <div class="kt-size-control" id="kt-size-control">
+      <button data-size="small">S</button>
+      <button data-size="medium" class="kt-size-active">M</button>
+      <button data-size="large">L</button>
+    </div>
+  </div>
+</div>
+
+<div class="kt-buttons">
+  <button class="kt-btn thumb" data-finger="thumb">Thumb<span class="kt-key">SPACE — punctuation</span></button>
+  <button class="kt-btn index" data-finger="index">Index<span class="kt-key">J</span></button>
+  <button class="kt-btn middle" data-finger="middle">Middle<span class="kt-key">K</span></button>
+  <button class="kt-btn ring" data-finger="ring">Ring<span class="kt-key">L</span></button>
+  <button class="kt-btn pinky" data-finger="pinky">Pinky<span class="kt-key">; — numbers/clear</span></button>
+</div>
+
+<div class="kt-footer">
+  <div class="kt-hint">Use J/K/L + Space + ; on your keyboard, or tap the buttons directly. 3 taps = a letter. Thumb + 2 = punctuation/caps. Pinky = accept top word suggestion (mid-word) or numbers (idle) or clear (mid-sequence). Wavy underline = not in the ~3000-word dictionary.</div>
+  <button class="kt-reset" id="kt-clear">Clear</button>
+</div>
+</div>
+
+<script>
+(function() {
+  const root = document.getElementById('kt-root');
+
+  const LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ ".split("");
+  const FINGER_DIGIT = { index: 0, middle: 1, ring: 2 };
+
+  function toBase3(n, width) {
+    const d = [];
+    for (let i = 0; i < width; i++) { d.push(n % 3); n = Math.floor(n / 3); }
+    return d.reverse();
+  }
+
+  // No Tap-Strap hardware to fight here -- a keyboard key or a touch
+  // button has no "3-in-a-row powers it off" gesture and no built-in
+  // double-tap mode switch. So the full clean base-3 tree just works:
+  // all 27 letter codes are valid, including A/N/space as same-key x3.
+  const LETTER_TABLE = {};
+  LETTERS.forEach((sym, pos) => { LETTER_TABLE[toBase3(pos, 3).join("")] = sym; });
+
+  // Command menu (thumb + 2 taps): all 9 slots used directly, no
+  // overflow branch needed for the same reason.
+  const COMMAND_ACTIONS = ["period","comma","backspace","enter","question","exclamation","apostrophe","hyphen","caps_toggle"];
+  const COMMAND_TABLE = {};
+  COMMAND_ACTIONS.forEach((action, pos) => { COMMAND_TABLE[toBase3(pos, 2).join("")] = action; });
+  const COMMAND_CHAR = { period:".", comma:",", enter:"\n", question:"?", exclamation:"!", apostrophe:"'", hyphen:"-" };
+
+  // Number mode (pinky, when not mid-sequence, toggles in/out): 3 taps
+  // gives 27 slots, comfortably fitting the 10 digits + a decimal point
+  // with room to spare -- no need for a second overflow branch here either.
+  const NUMBER_SYMBOLS = "0123456789.".split("");
+
+  // Top ~3000 English words by frequency (first20hours/google-10000-english,
+  // MIT-licensed n-gram frequency data derived from a Norvig word-frequency
+  // compilation). Used for both word-completion ranking (frequency order)
+  // and spell-check flagging (set membership). Not an exhaustive dictionary --
+  // valid but less common words will get flagged too; treat flags as a hint,
+  // not a verdict.
+  const WORD_LIST = "the of and to a in for is on that by this with i you it not or be are from at as your all have new more an was we will home can us about if page my has search free but our one other do no information time they site he up may what which their news out use any there see only so his when contact here business who web also now help get pm view online c e first am been would how were me s services some these click its like service x than find price date back top people had list name just over state year day into email two health n world re next used go b work last most products music buy data make them should product system post her city t add policy number such please available copyright support message after best software then jan good video well d where info rights public books high school through m each links she review years order very privacy book items company r read group need many user said de does set under general research university january mail full map reviews program life know games way days management p part could great united hotel real f item international center ebay must store travel comments made development report off member details line terms before hotels did send right type because local those using results office education national car design take posted internet address community within states area want phone dvd shipping reserved subject between forum family l long based w code show o even black check special prices website index being women much sign file link open today technology south case project same pages uk version section own found sports house related security both g county american photo game members power while care network down computer systems three total place end following download h him without per access think north resources current posts big media law control water history pictures size art personal since including guide shop directory board location change white text small rating rate government children during usa return students v shopping account times sites level digital profile previous form events love old john main call hours image department title description non k y insurance another why shall property class cd still money quality every listing content country private little visit save tools low reply customer december compare movies include college value article york man card jobs provide j food source author different press u learn sale around print course job canada process teen room stock training too credit point join science men categories advanced west sales look english left team estate box conditions select windows photos gay thread week category note live large gallery table register however june october november market library really action start series model features air industry plan human provided tv yes required second hot accessories cost movie forums march la september better say questions july yahoo going medical test friend come dec server pc study application cart staff articles san feedback again play looking issues april never users complete street topic comment financial things working against standard tax person below mobile less got blog party payment equipment login student let programs offers legal above recent park stores side act problem red give memory performance social q august quote language story sell options experience rates create key body young america important field few east paper single ii age activities club example girls additional password z latest something road gift question changes night ca hard texas oct pay four poker status browse issue range building seller court february always result audio light write war nov offer blue groups al easy given files event release analysis request fax china making picture needs possible might professional yet month major star areas future space committee hand sun cards problems london washington meeting rss become interest id child keep enter california share similar garden schools million added reference companies listed baby learning energy run delivery net popular term film stories put computers journal reports co try welcome central images president notice original head radio until cell color self council away includes track australia discussion archive once others entertainment agreement format least society months log safety friends sure faq trade edition cars messages marketing tell further updated association able having provides david fun already green studies close common drive specific several gold feb living sep collection called short arts lot ask display limited powered solutions means director daily beach past natural whether due et electronics five upon period planning database says official weather mar land average done technical window france pro region island record direct microsoft conference environment records st district calendar costs style url front statement update parts aug ever downloads early miles sound resource present applications either ago document word works material bill apr written talk federal hosting rules final adult tickets thing centre requirements via cheap kids finance true minutes else mark third rock gifts europe reading topics bad individual tips plus auto cover usually edit together videos percent fast function fact unit getting global tech meet far economic en player projects lyrics often subscribe submit germany amount watch included feel though bank risk thanks everything deals various words linux jul production commercial james weight town heart advertising received choose treatment newsletter archives points knowledge magazine error camera jun girl currently construction toys registered clear golf receive domain methods chapter makes protection policies loan wide beauty manager india position taken sort listings models michael known half cases step engineering florida simple quick none wireless license paul friday lake whole annual published later basic sony shows corporate google church method purchase customers active response practice hardware figure materials fire holiday chat enough designed along among death writing speed html countries loss face brand discount higher effects created remember standards oil bit yellow political increase advertise kingdom base near environmental thought stuff french storage oh japan doing loans shoes entry stay nature orders availability africa summary turn mean growth notes agency king monday european activity copy although drug pics western income force cash employment overall bay river commission ad package contents seen players engine port album regional stop supplies started administration bar institute views plans double dog build screen exchange types soon sponsored lines electronic continue across benefits needed season apply someone held ny anything printer condition effective believe organization effect asked eur mind sunday selection casino pdf lost tour menu volume cross anyone mortgage hope silver corporation wish inside solution mature role rather weeks addition came supply nothing certain usr executive running lower necessary union jewelry according dc clothing mon com particular fine names robert homepage hour gas skills six bush islands advice career military rental decision leave british teens pre huge sat woman facilities zip bid kind sellers middle move cable opportunities taking values division coming tuesday object lesbian appropriate machine logo length actually nice score statistics client ok returns capital follow sample investment sent shown saturday christmas england culture band flash ms lead george choice went starting registration fri thursday courses consumer hi airport foreign artist outside furniture levels channel letter mode phones ideas wednesday structure fund summer allow degree contract button releases wed homes super male matter custom virginia almost took located multiple asian distribution editor inn industrial cause potential song cnet ltd los hp focus late fall featured idea rooms female responsible inc communications win associated thomas primary cancer numbers reason tool browser spring foundation answer voice eg friendly schedule documents communication purpose feature bed comes police everyone independent ip approach cameras brown physical operating hill maps medicine deal hold ratings chicago forms glass happy tue smith wanted developed thank safe unique survey prior telephone sport ready feed animal sources mexico population pa regular secure navigation operations therefore simply evidence station christian round paypal favorite understand option master valley recently probably thu rentals sea built publications blood cut worldwide improve connection publisher hall larger anti networks earth parents nokia impact transfer introduction kitchen strong tel carolina wedding properties hospital ground overview ship accommodation owners disease tx excellent paid italy perfect hair opportunity kit classic basis command cities william express award distance tree peter assessment ensure thus wall ie involved el extra especially interface partners budget rated guides success maximum ma operation existing quite selected boy amazon patients restaurants beautiful warning wine locations horse vote forward flowers stars significant lists technologies owner retail animals useful directly manufacturer ways est son providing rule mac housing takes iii gmt bring catalog searches max trying mother authority considered told xml traffic programme joined input strategy feet agent valid bin modern senior ireland teaching door grand testing trial charge units instead canadian cool normal wrote enterprise ships entire educational md leading metal positive fl fitness chinese opinion mb asia football abstract uses output funds mr greater likely develop employees artists alternative processing responsibility resolution java guest seems publication pass relations trust van contains session multi photography republic fees components vacation century academic assistance completed skin graphics indian prev ads mary il expected ring grade dating pacific mountain organizations pop filter mailing vehicle longer consider int northern behind panel floor german buying match proposed default require iraq boys outdoor deep morning otherwise allows rest protein plant reported hit transportation mm pool mini politics partner disclaimer authors boards faculty parties fish membership mission eye string sense modified pack released stage internal goods recommended born unless richard detailed japanese race approved background target except character usb maintenance ability maybe functions ed moving brands places php pretty trademarks phentermine spain southern yourself etc winter battery youth pressure submitted boston debt keywords medium television interested core break purposes throughout sets dance wood msn itself defined papers playing awards fee studio reader virtual device established answers rent las remote dark programming external apple le regarding instructions min offered theory enjoy remove aid surface minimum visual host variety teachers isbn martin manual block subjects agents increased repair fair civil steel understanding songs fixed wrong beginning hands associates finally az updates desktop classes paris ohio gets sector capacity requires jersey un fat fully father electric saw instruments quotes officer driver businesses dead respect unknown specified restaurant mike trip pst worth mi procedures poor teacher eyes relationship workers farm georgia peace traditional campus tom showing creative coast benefit progress funding devices lord grant sub agree fiction hear sometimes watches careers beyond goes families led museum themselves fan transport interesting blogs wife evaluation accepted former implementation ten hits zone complex th cat galleries references die presented jack flat flow agencies literature respective parent spanish michigan columbia setting dr scale stand economy highest helpful monthly critical frame musical definition secretary angeles networking path australian employee chief gives kb bottom magazines packages detail francisco laws changed pet heard begin individuals colorado royal clean switch russian largest african guy titles relevant guidelines justice connect bible dev cup basket applied weekly vol installation described demand pp suite vegas na square chris attention advance skip diet army auction gear lee os difference allowed correct charles nation selling lots piece sheet firm seven older illinois regulations elements species jump cells module resort facility random pricing dvds certificate minister motion looks fashion directions visitors documentation monitor trading forest calls whose coverage couple giving chance vision ball ending clients actions listen discuss accept automotive naked goal successful sold wind communities clinical situation sciences markets lowest highly publishing appear emergency developing lives currency leather determine temperature palm announcements patient actual historical stone bob commerce ringtones perhaps persons difficult scientific satellite fit tests village accounts amateur ex met pain xbox particularly factors coffee www settings buyer cultural steve easily oral ford poster edge functional root au fi closed holidays ice pink zealand balance monitoring graduate replies shot nc architecture initial label thinking scott llc sec recommend canon league waste minute bus provider optional dictionary cold accounting manufacturing sections chair fishing effort phase fields bag fantasy po letters motor va professor context install shirt apparel generally continued foot mass crime count breast techniques ibm rd johnson sc quickly dollars websites religion claim driving permission surgery patch heat wild measures generation kansas miss chemical doctor task reduce brought himself nor component enable exercise bug santa mid guarantee leader diamond israel se processes soft servers alone meetings seconds jones arizona keyword interests flight congress fuel username walk produced italian paperback classifieds wait supported pocket saint rose freedom argument competition creating jim drugs joint premium providers fresh characters attorney upgrade di factor growing thousands km stream apartments pick hearing eastern auctions therapy entries dates generated signed upper administrative serious prime samsung limit began louis steps errors shops del efforts informed ga ac thoughts creek ft worked quantity urban practices sorted reporting essential myself tours platform load affiliate labor immediately admin nursing defense machines designated tags heavy covered recovery joe guys integrated configuration merchant comprehensive expert universal protect drop solid cds presentation languages became orange compliance vehicles prevent theme rich im campaign marine improvement vs guitar finding pennsylvania examples ipod saying spirit ar claims challenge motorola acceptance strategies mo seem affairs touch intended towards sa goals hire election suggest branch charges serve affiliates reasons magic mount smart talking gave ones latin multimedia xp avoid certified manage corner rank computing oregon element birth virus abuse interactive requests separate quarter procedure leadership tables define racing religious facts breakfast kong column plants faith chain developer identify avenue missing died approximately domestic sitemap recommendations moved houston reach comparison mental viewed moment extended sequence inch attack sorry centers opening damage lab reserve recipes cvs gamma plastic produce snow placed truth counter failure follows eu weekend dollar camp ontario automatically des minnesota films bridge native fill williams movement printing baseball owned approval draft chart played contacts cc jesus readers clubs lcd wa jackson equal adventure matching offering shirts profit leaders posters institutions assistant variable ave dj advertisement expect parking headlines yesterday compared determined wholesale workshop russia gone codes kinds extension seattle statements golden completely teams fort cm wi lighting senate forces funny brother gene turned portable tried electrical applicable disc returned pattern ct boat named theatre laser earlier manufacturers sponsor classical icon warranty dedicated indiana direction harry basketball objects ends delete evening assembly nuclear taxes mouse signal criminal issued brain sexual wisconsin powerful dream obtained false da cast flower felt personnel passed supplied identified falls pic soul aids opinions promote stated stats hawaii professionals appears carry flag decided nj covers hr em advantage hello designs maintain tourism priority newsletters adults clips savings iv graphic atom payments rw estimated binding brief ended winning eight anonymous iron straight script served wants miscellaneous prepared void dining alert integration atlanta dakota tag interview mix framework disk installed queen vhs credits clearly fix handle sweet desk criteria pubmed dave massachusetts diego hong vice associate ne truck behavior enlarge ray frequently revenue measure changing votes du duty looked discussions bear gain festival laboratory ocean flights experts signs lack depth iowa whatever logged laptop vintage train exactly dry explore maryland spa concept nearly eligible checkout reality forgot handling origin knew gaming feeds billion destination scotland faster intelligence dallas bought con ups nations route followed specifications broken tripadvisor frank alaska zoom blow battle residential anime speak decisions industries protocol query clip partnership editorial nt expression es equity provisions speech wire principles suggestions rural shared sounds replacement tape strategic judge spam economics acid bytes cent forced compatible fight apartment height null zero speaker filed gb netherlands obtain bc consulting recreation offices designer remain managed pr failed marriage roll korea banks fr participants secret bath aa kelly leads negative austin favorites toronto theater springs missouri andrew var perform healthy translation estimates font assets injury mt joseph ministry drivers lawyer figures married protected proposal sharing philadelphia portal waiting birthday beta fail gratis banking officials brian toward won slightly assist conduct contained lingerie legislation calling parameters jazz serving bags profiles miami comics matters houses doc postal relationships tennessee wear controls breaking combined ultimate wales representative frequency introduced minor finish departments residents noted displayed mom reduced physics rare spent performed extreme samples davis daniel bars reviewed row oz forecast removed helps singles administrator cycle amounts contain accuracy dual rise usd sleep mg bird pharmacy brazil creation static scene hunter addresses lady crystal famous writer chairman violence fans oklahoma speakers drink academy dynamic gender eat permanent agriculture dell cleaning constitutes portfolio practical delivered collectibles infrastructure exclusive seat concerns colour vendor originally intel utilities philosophy regulation officers reduction aim bids referred supports nutrition recording regions junior toll les cape ann rings meaning tip secondary wonderful mine ladies henry ticket announced guess agreed prevention whom ski soccer math import posting presence instant mentioned automatic healthcare viewing maintained ch increasing majority connected christ dan dogs sd directors aspects austria ahead moon participation scheme utility preview fly manner matrix containing combination devel amendment despite strength guaranteed turkey libraries proper distributed degrees singapore enterprises delta fear seeking inches phoenix rs convention shares principal daughter standing comfort colors wars cisco ordering kept alpha appeal cruise bonus certification previously hey bookmark buildings specials beat disney household batteries adobe smoking bbc becomes drives arms alabama tea improved trees avg achieve positions dress subscription dealer contemporary sky utah nearby rom carried happen exposure panasonic hide permalink signature gambling refer miller provision outdoors clothes caused luxury babes frames certainly indeed newspaper toy circuit layer printed slow removal easier src liability trademark hip printers faqs nine adding kentucky mostly eric spot taylor trackback prints spend factory interior revised grow americans optical promotion relative amazing clock dot hiv identity suites conversion feeling hidden reasonable victoria serial relief revision broadband influence ratio pda importance rain onto dsl planet webmaster copies recipe zum permit seeing proof dna diff tennis bass prescription bedroom empty instance hole pets ride licensed orlando specifically tim bureau maine sql represent conservation pair ideal specs recorded don pieces finished parks dinner lawyers sydney stress cream ss runs trends yeah discover ap patterns boxes louisiana hills javascript fourth nm advisor mn marketplace nd evil aware wilson shape evolution irish certificates objectives stations suggested gps op remains acc greatest firms concerned".split(" ");
+  const WORD_SET = new Set(WORD_LIST);
+
+  const NUMBER_TABLE = {};
+  NUMBER_SYMBOLS.forEach((sym, pos) => { NUMBER_TABLE[toBase3(pos, 3).join("")] = sym; });
+
+  const MODE_CONFIG = {
+    letter:  { table: LETTER_TABLE,  needed: 3 },
+    command: { table: COMMAND_TABLE, needed: 2 },
+    number:  { table: NUMBER_TABLE,  needed: 3 },
+  };
+
+  let buffer = [];
+  let mode = "letter";
+  let capsActive = false;
+  let autoCapEnabled = true;
+  let autoPunctEnabled = true;
+  let output = "";
+
+  const outputEl = root.querySelector('#kt-output');
+  const progressEl = root.querySelector('#kt-progress');
+  const candidatesEl = root.querySelector('#kt-candidates');
+  const modeLabel = root.querySelector('#kt-mode-label');
+  const capsIndicator = root.querySelector('#kt-caps');
+  const suggestionsEl = root.querySelector('#kt-suggestions');
+
+  function currentConfig() { return MODE_CONFIG[mode]; }
+
+  function groupedCandidates(prefixDigits) {
+    const { table } = currentConfig();
+    const prefix = prefixDigits.join("");
+    const groups = { 0: [], 1: [], 2: [] };
+    for (const key in table) {
+      if (key.slice(0, prefix.length) !== prefix) continue;
+      const nextDigit = key[prefix.length];
+      if (nextDigit === undefined) continue;
+      groups[nextDigit].push({ key, val: table[key] });
+    }
+    // Sort by the remaining tap sequence (key), not alphabetically by
+    // value -- the display should reflect which further taps reach which
+    // item, and alphabetical sorting scrambles that (sometimes even
+    // exactly reversing it, as it happened to for the command menu).
+    Object.values(groups).forEach(g => g.sort((a, b) => a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+    return groups;
+  }
+
+  // --- word completion & spell-check helpers ---
+
+  function getCurrentWord() {
+    const m = output.match(/[a-zA-Z]*$/);
+    return m ? m[0] : "";
+  }
+
+  function getSuggestions(prefix, limit) {
+    if (!prefix) return [];
+    const lower = prefix.toLowerCase();
+    const out = [];
+    for (const w of WORD_LIST) {
+      if (w.startsWith(lower)) {
+        out.push(w);
+        if (out.length >= limit) break;
+      }
+    }
+    return out;
+  }
+
+  function applyWordCase(word, typedPrefix) {
+    if (typedPrefix && typedPrefix[0] === typedPrefix[0].toUpperCase() && typedPrefix[0] !== typedPrefix[0].toLowerCase()) {
+      return word[0].toUpperCase() + word.slice(1);
+    }
+    return word;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Rebuilds the output HTML on every render rather than tracking ranges
+  // separately -- this way backspacing back into an earlier word just
+  // works, no stale-range bookkeeping needed. Only *finished* words get
+  // checked; the word still being typed is left alone (checking a
+  // half-typed word against the dictionary would just flag everything).
+  function buildOutputHTML() {
+    const curWord = getCurrentWord();
+    const stableLen = output.length - curWord.length;
+    const stableText = output.slice(0, stableLen);
+    const liveText = output.slice(stableLen);
+
+    let html = "";
+    const re = /[a-zA-Z]+|[^a-zA-Z]+/g;
+    let m;
+    while ((m = re.exec(stableText))) {
+      const token = m[0];
+      if (/^[a-zA-Z]+$/.test(token) && !WORD_SET.has(token.toLowerCase())) {
+        html += '<span class="kt-misspelled">' + escapeHtml(token) + '</span>';
+      } else {
+        html += escapeHtml(token);
+      }
+    }
+    html += escapeHtml(liveText);
+    return html.replace(/\n/g, "⏎\n");
+  }
+
+  function renderSuggestions() {
+    const curWord = getCurrentWord();
+    suggestionsEl.innerHTML = "";
+    if (!curWord) return;
+    const suggestions = getSuggestions(curWord, 5);
+    if (suggestions.length === 0) return;
+
+    const label = document.createElement('span');
+    label.className = 'kt-sug-label';
+    label.textContent = 'pinky →';
+    suggestionsEl.appendChild(label);
+
+    suggestions.forEach((word, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'kt-sug-chip' + (i === 0 ? ' kt-sug-top' : '');
+      chip.textContent = applyWordCase(word, curWord);
+      suggestionsEl.appendChild(chip);
+    });
+  }
+
+
+  function render(resolvedVal) {
+    outputEl.innerHTML = buildOutputHTML() + '<span class="kt-cursor">&nbsp;</span>';
+    capsIndicator.textContent = capsActive ? "CAPS" : "";
+    renderSuggestions();
+
+    const { needed } = currentConfig();
+    progressEl.innerHTML = "";
+    for (let i = 0; i < needed; i++) {
+      const d = document.createElement('div');
+      d.className = 'kt-slot' + (i < buffer.length ? ' filled ' + mode : '');
+      progressEl.appendChild(d);
+    }
+
+    const modeNames = { letter: "LETTER", command: "COMMAND", number: "NUMBER" };
+    modeLabel.textContent = modeNames[mode];
+    modeLabel.className = 'kt-mode ' + mode;
+
+    const displaySym = (val) => {
+      if (val === " ") return "SPACE";
+      const text = String(val).replace("_", " ");
+      return mode === "letter" ? applyLetterCase(text) : text;
+    };
+
+    candidatesEl.innerHTML = "";
+    if (resolvedVal !== undefined) {
+      const banner = document.createElement('div');
+      banner.className = 'kt-resolved-banner';
+      banner.textContent = displaySym(resolvedVal);
+      candidatesEl.appendChild(banner);
+      return;
+    }
+
+    const labels = { 0: 'index', 1: 'middle', 2: 'ring' };
+    const groups = groupedCandidates(buffer);
+    [0, 1, 2].forEach(digit => {
+      const col = document.createElement('div');
+      col.className = 'kt-group ' + labels[digit];
+      const header = document.createElement('div');
+      header.className = 'kt-group-header';
+      header.textContent = labels[digit];
+      col.appendChild(header);
+      groups[digit].forEach(c => {
+        const el = document.createElement('div');
+        el.className = 'kt-cand alive';
+        el.textContent = displaySym(c.val);
+        col.appendChild(el);
+      });
+      candidatesEl.appendChild(col);
+    });
+  }
+
+  function shouldAutoCapitalizeNext() {
+    const trimmed = output.replace(/[ \t]+$/, "");
+    if (trimmed === "") return true;
+    const last = trimmed[trimmed.length - 1];
+    return last === "." || last === "!" || last === "?" || last === "\n";
+  }
+
+  function applyLetterCase(sym) {
+    if (capsActive) return sym.toUpperCase();
+    if (autoCapEnabled && getCurrentWord() === "" && shouldAutoCapitalizeNext()) {
+      return sym.toUpperCase();
+    }
+    return sym.toLowerCase();
+  }
+
+  // Classic phone-keyboard fix: a standalone lowercase "i" gets promoted
+  // to "I" once it's no longer being actively typed (i.e. once a
+  // boundary character follows it).
+  function fixStandaloneI() {
+    if (!autoCapEnabled) return;
+    const m = output.match(/(^|[^a-zA-Z])i([^a-zA-Z]*)$/);
+    if (m) {
+      const idx = m.index + m[1].length;
+      output = output.slice(0, idx) + "I" + output.slice(idx + 1);
+    }
+  }
+
+  const AUTO_SPACE_AFTER = new Set(["period", "comma", "question", "exclamation"]);
+
+  function handleCommandResult(action) {
+    if (action === "caps_toggle") {
+      capsActive = !capsActive;
+      buffer = []; mode = "letter";
+      render();
+      return;
+    }
+    if (action === "backspace") {
+      output = output.slice(0, -1);
+    } else {
+      output += COMMAND_CHAR[action] ?? "";
+      if (action === "period" || action === "comma" || action === "question" || action === "exclamation" || action === "enter") {
+        fixStandaloneI();
+      }
+      if (autoPunctEnabled && AUTO_SPACE_AFTER.has(action)) output += " ";
+    }
+    buffer = []; mode = "letter";
+    render();
+  }
+
+  function tap(finger) {
+    if (finger === "pinky") {
+      if (buffer.length === 0) {
+        const curWord = getCurrentWord();
+        const suggestions = mode === "letter" ? getSuggestions(curWord, 1) : [];
+        if (curWord && suggestions.length > 0 && suggestions[0] !== curWord.toLowerCase()) {
+          // Mid-word with a real completion available: accept it.
+          const completion = applyWordCase(suggestions[0], curWord);
+          output = output.slice(0, output.length - curWord.length) + completion + " ";
+        } else {
+          // Otherwise, idle: toggle number mode.
+          mode = (mode === "number") ? "letter" : "number";
+        }
+      } else {
+        // Mid-sequence: clear/abort, same as a general "escape" key.
+        buffer = []; mode = "letter";
+      }
+      render();
+      return;
+    }
+
+    if (finger === "thumb") {
+      if (mode === "number" && buffer.length === 0) {
+        mode = "letter";
+      } else {
+        buffer = []; mode = "command";
+      }
+      render();
+      return;
+    }
+
+    if (!(finger in FINGER_DIGIT)) return;
+
+    buffer.push(FINGER_DIGIT[finger]);
+    const { table, needed } = currentConfig();
+    if (buffer.length < needed) { render(); return; }
+
+    const key = buffer.join("");
+    const resolved = table[key];
+
+    render(resolved);
+    setTimeout(() => {
+      if (mode === "letter") {
+        if (resolved) {
+          output += applyLetterCase(resolved);
+          if (resolved === " ") fixStandaloneI();
+        }
+        buffer = [];
+      } else if (mode === "number") {
+        if (resolved) output += resolved;
+        buffer = [];
+      } else {
+        if (resolved) { handleCommandResult(resolved); return; }
+        buffer = []; mode = "letter";
+      }
+      render();
+    }, 220);
+  }
+
+  // --- input wiring: click/tap buttons, or real keyboard keys ---
+  const KEY_MAP = { 'j': 'index', 'k': 'middle', 'l': 'ring', ' ': 'thumb', ';': 'pinky' };
+
+  root.querySelectorAll('.kt-btn').forEach(btn => {
+    btn.addEventListener('click', () => tap(btn.dataset.finger));
+  });
+  root.querySelector('#kt-clear').addEventListener('click', () => {
+    output = ""; buffer = []; mode = "letter"; render();
+  });
+
+  root.querySelectorAll('.kt-size-control button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      root.setAttribute('data-size', btn.dataset.size);
+      root.querySelectorAll('.kt-size-control button').forEach(b => {
+        b.classList.toggle('kt-size-active', b === btn);
+      });
+    });
+  });
+
+  root.querySelector('#kt-autocap-toggle').addEventListener('click', (e) => {
+    autoCapEnabled = !autoCapEnabled;
+    e.currentTarget.classList.toggle('kt-toggle-on', autoCapEnabled);
+  });
+  root.querySelector('#kt-autopunct-toggle').addEventListener('click', (e) => {
+    autoPunctEnabled = !autoPunctEnabled;
+    e.currentTarget.classList.toggle('kt-toggle-on', autoPunctEnabled);
+  });
+
+  function flashButton(finger) {
+    const btn = root.querySelector('.kt-btn.' + finger);
+    if (!btn) return;
+    btn.classList.add('kt-pressed');
+    setTimeout(() => btn.classList.remove('kt-pressed'), 120);
+  }
+
+  // Listen at document level rather than requiring a click into the
+  // output box first -- an artifact iframe is dedicated to this widget
+  // alone, so there's no competing input to accidentally steal keys from,
+  // and this avoids the easy-to-miss "nothing happens until you click
+  // here first" trap.
+  document.addEventListener('keydown', (e) => {
+    const finger = KEY_MAP[e.key.toLowerCase()];
+    if (!finger) return;
+    e.preventDefault();
+    flashButton(finger);
+    tap(finger);
+  });
+  outputEl.addEventListener('click', () => outputEl.focus());
+
+  render();
+})();
+</script>
