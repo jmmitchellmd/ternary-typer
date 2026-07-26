@@ -22,7 +22,7 @@ ring     →   ring     →   ring         →  space
 
 ### Features
 - Word completion, ranked by real word frequency
-- Spell-check (wavy underline for words outside the embedded ~3000-word list)
+- Spell-check (wavy underline for words outside the embedded ~9,900-word list)
 - Auto-capitalization at sentence starts, plus the standard "i" → "I" fix
 - Auto-space after sentence punctuation
 - Adjustable hand size (S/M/L), scaling button size, spacing, and the arc layout together
@@ -36,7 +36,7 @@ The current, actively-used version (`index.html`) drops all of that hardware-spe
 
 ## Attribution
 
-The embedded word list (`WORD_LIST` in `index.html`) is the top ~3,000 entries from [first20hours/google-10000-english](https://github.com/first20hours/google-10000-english) (MIT-style public frequency data, no-swears variant), itself derived from Peter Norvig's word-frequency compilation of Google's n-gram corpus. It's a frequency list, not a curated dictionary — expect some false positives/negatives from spell-check.
+The embedded word list (`WORD_LIST` in `index.html`) is the full ~9,900-entry list from [first20hours/google-10000-english](https://github.com/first20hours/google-10000-english) (MIT-style public frequency data, no-swears variant), itself derived from Peter Norvig's word-frequency compilation of Google's n-gram corpus. It's a frequency list, not a curated dictionary — expect some false positives/negatives from spell-check.
 
 ## License
 
